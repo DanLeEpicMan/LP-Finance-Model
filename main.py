@@ -24,14 +24,12 @@ for name, tick in securities.tickers.items():
         curr_row = hist.iloc[i]
         if curr_row.name.year - prev_row.name.year != 1:
             continue
-        annual_return += (prev_row['Open'] + prev_row['Close']) / (curr_row['Open'] + curr_row['Close'])
+        annual_return += (curr_row['Open'] + curr_row['Close']) / (prev_row['Open'] + prev_row['Close'])
         counted_years += 1
-    print(annual_return / counted_years - 1)
+    roi_data[name] = annual_return / counted_years - 1
 
 
-
-
-opt.linprog
+print(roi_data)
 
 
 '''
