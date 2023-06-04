@@ -49,7 +49,7 @@ for basket, list in securities_table.items():
                 end_of_month = end_of_month - timedelta(days=end_of_month.day)
                 div = tick.dividends[start_of_month : end_of_month]
                 
-                annualized_monthly_return *= (curr_month['Average'] + div.sum()) / prev_month['Average']
+                annualized_monthly_return *= (curr_month['Close'] + div.sum()) / prev_month['Close']
             annual_returns.append(annualized_monthly_return)
             
         try:

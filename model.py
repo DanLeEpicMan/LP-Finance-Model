@@ -7,49 +7,51 @@ AMOUNT_TO_INVEST = 5000
 
 data = pd.read_csv('data.csv', index_col=0)
 data['Annual Return'] = data['Annual Return'] + 1
-# data['Volatility'] = data['Volatility'] + 1
+#data['Volatility'] = data['Volatility'] + 1
 
 
 baskets = list(dict.fromkeys(', '.join(data['Basket'].unique()).split(', ')))
 variables = data.index.tolist()
 
-c = -1 * data['Annual Return'].to_numpy(dtype=np.float64)
+c = -1 * np.append(data['Annual Return'].to_numpy(dtype=np.float64), 1) 
 
-A = np.empty((len(baskets) + 1, len(variables)), dtype=np.float64)
+A = np.zeros((len(baskets), len(variables) + 1), dtype=np.float64)
 
 for i in range(len(baskets)):
     basket = baskets[i]
     for j in range(len(variables)):
         var = variables[j]
-        A[i, j] = (1 / data['Confidence'][var]) * data['Volatility'][var] if basket in data['Basket'][var] else 0
-        # A[i, j] = (1 / data['Confidence'][var]) if basket in data['Basket'][var] else 0
+        #A[i, j] = (1 / data['Confidence'][var]) * (1 + data['Volatility'][var]) if basket in data['Basket'][var] else 0
+        A[i, j] = (1 / data['Confidence'][var]) * (1 + data['Volatility'][var]) if basket in data['Basket'][var] else 0
 
-
-A[len(baskets)] = np.ones(shape=len(variables), dtype=np.float64)
 
 # "uniform" partition of b
 zeros = np.count_nonzero(A, axis=1)
-zeros[-1] = 0
 b_uniform = zeros * (AMOUNT_TO_INVEST / sum(zeros))
-b_uniform[-1] = AMOUNT_TO_INVEST
 
 # "volatile" partition of b
-b_volatile = np.empty(shape=len(baskets) + 1, dtype=np.float64)
-b_volatile[-1] = AMOUNT_TO_INVEST 
-
+b_volatile = np.empty(shape=len(baskets), dtype=np.float64)
 for i in range(len(baskets)):
     average_volatility = data[data['Basket'].str.contains(baskets[i])]['Volatility'].mean()
-    b_volatile[i] = (average_volatility) * AMOUNT_TO_INVEST
+    b_volatile[i] = (1 / (1 + average_volatility)) * AMOUNT_TO_INVEST
 
-result = linprog(c, A_ub = A, b_ub = b_volatile)
+print(b_volatile)
 
-# print(result)
+result = linprog(c, 
+                 A_ub = A, 
+                 b_ub = b_volatile, 
+                 A_eq=np.ones(shape=(1, len(c)), dtype=np.float64), 
+                 b_eq=np.array(AMOUNT_TO_INVEST)
+            )
 
-formatted_result = {}
+formatted_result = {'Total to Invest': AMOUNT_TO_INVEST - result.x[-1], 'New Balance': -1 * result.fun}
+
+sensitivity = {}
 
 for i in range(len(variables)):
-    formatted_result[data['Name'][variables[i]]] = result.x[i]
+    if result.x[i] != 0:
+        formatted_result[data['Name'][variables[i]]] = result.x[i]
+    sensitivity[data['Name'][variables[i]]] = {'Lower' : result.lower.marginals[i], 'Upper': result.upper.marginals[i]}
 
 print(formatted_result)
-# print(b_volatile)
-
+print(sensitivity)
